@@ -36726,218 +36726,6 @@ void muga_vulkan_swapchain_destroy(muga_vulkan_setup setup, muga_vulkan_swapchai
 	vkDestroySwapchainKHR(setup.device, swapchain.swapchain, MU_NULL_PTR);
 }
 
-/* VULKAN FRAMEBUFFER STRUCT LOGIC */
-
-struct muga_vulkan_framebuffer {
-	VkRenderPass render_pass;
-	size_m framebuffer_count;
-	VkFramebuffer* framebuffers;
-	size_m framebuffer_index;
-	VkExtent2D extent;
-};
-typedef struct muga_vulkan_framebuffer muga_vulkan_framebuffer;
-
-muga_vulkan_framebuffer muga_vulkan_framebuffer_create(
-	muResult* result,
-	muga_vulkan_setup setup,
-	VkExtent2D extent,
-	unsigned int color_attachment_count,
-	VkFormat* color_attachment_formats,
-	VkSampleCountFlagBits* color_attachment_samples,
-	size_m image_view_count,
-	VkImageView* image_views,
-	muBool has_depth_attachment,
-	muBool default_framebuffer,
-	muBool read_only_depth_attachment
-) {
-	muga_vulkan_framebuffer framebuffer = {0};
-
-	// create render pass
-
-	VkAttachmentDescription* color_attachments = MU_NULL_PTR;
-	if (color_attachment_count > 0) {
-		color_attachments = mu_malloc(sizeof(VkAttachmentDescription) * color_attachment_count);
-	}
-	// "If the attachment uses a color format, then loadOp and storeOp
-	// are used, and stencilLoadOp and stencilStoreOp are ignored."
-	// https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkAttachmentDescription.html
-	for (size_m i = 0; i < color_attachment_count; i++) {
-		color_attachments[i] = (VkAttachmentDescription){0};
-		color_attachments[i].format = color_attachment_formats[i];
-		color_attachments[i].samples = color_attachment_samples[i];
-		// might need to be VK_ATTACHMENT_LOAD_OP_CLEAR?
-		color_attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachments[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		if (default_framebuffer) {
-			color_attachments[i].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		} else {
-			color_attachments[i].finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL might be correct? idk.
-		}
-	}
-	// "If the format has depth and/or stencil components, loadOp
-	// and storeOp apply only to the depth data, while stencilLoadOp
-	// and stencilStoreOp define how the stencil data is handled."
-	// https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkAttachmentDescription.html
-	VkAttachmentDescription depth_attachment = {0};
-	if (has_depth_attachment == MU_TRUE) {
-		depth_attachment.format = muga_vulkan_find_supported_depth_format(setup.physical_device);
-		if (depth_attachment.format == 0) {
-			// @TODO error handle pls
-		}
-		depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-		depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		if (default_framebuffer) {
-			depth_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		} else {
-			depth_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		}
-		// finalLayout might need to be something like VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL if
-		// this isn't the default framebuffer... idk?
-		// My concern is that if it's a user framebuffer, it's never going to be directly displayed as is,
-		// and will have to go through some form of data transference at some point to be used, whether
-		// that be a data transfer from the user framebuffer to the default framebuffer or from the user
-		// framebuffer to an image, or some other weird thing. This means that
-		// 'VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL' is the most technically correct option, but it is also
-		// *technically* a depth-stencil attachment. Then again, it is also technically one whether or not
-		// it's the default framebuffer, so it's fair to assume that VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-		// should be used here.
-		// Also, either way, if the depth-stencil attachment is read-only or read-and-write, its data
-		// needs to be 'transferred' to some degree... I don't know.
-		// Right now, 'read_only_depth_attachment' isn't even being used, does it need to?
-		// I don't know much about layout transferring yet, so this is a guess. @TODO figure this out.
-	}
-
-	VkAttachmentReference* color_references = MU_NULL_PTR;
-	if (color_attachment_count > 0) {
-		color_references = mu_malloc(sizeof(VkAttachmentReference) * color_attachment_count);
-	}
-	for (size_m i = 0; i < color_attachment_count; i++) {
-		color_references[i] = (VkAttachmentReference){0};
-		color_references[i].attachment = i;
-		color_references[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	}
-
-	VkAttachmentReference depth_reference = {0};
-	if (has_depth_attachment == MU_TRUE) {
-		// should this be 1 or color_attachment_count?
-		// We'll find out the hard way...
-		depth_reference.attachment = color_attachment_count;
-		depth_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	}
-
-	VkSubpassDescription subpass = {0};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = color_attachment_count;
-	subpass.pColorAttachments = color_references;
-	if (has_depth_attachment == MU_TRUE) {
-		subpass.pDepthStencilAttachment = &depth_reference;
-	}
-
-	VkAttachmentDescription* total_attachments = MU_NULL_PTR;
-	VkRenderPassCreateInfo render_pass_create_info = {0};
-	render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_create_info.attachmentCount = color_attachment_count;
-	render_pass_create_info.pAttachments = color_attachments;
-	if (has_depth_attachment == MU_TRUE) {
-		render_pass_create_info.attachmentCount++;
-		total_attachments = mu_malloc(sizeof(VkAttachmentDescription) * (color_attachment_count + 1));
-		for (size_m i = 0; i < color_attachment_count; i++) {
-			total_attachments[i] = color_attachments[i];
-		}
-		total_attachments[color_attachment_count] = depth_attachment;
-		render_pass_create_info.pAttachments = total_attachments;
-	}
-	render_pass_create_info.subpassCount = 1;
-	render_pass_create_info.pSubpasses = &subpass;
-	VkSubpassDependency dependency = {0};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	// Not sure with this...
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	// Jeez...
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	render_pass_create_info.dependencyCount = 1;
-	render_pass_create_info.pDependencies = &dependency;
-
-	if (vkCreateRenderPass(setup.device, &render_pass_create_info, MU_NULL_PTR, &framebuffer.render_pass) != VK_SUCCESS) {
-		if (total_attachments != MU_NULL_PTR) {
-		mu_free(total_attachments);
-		}
-		if (color_attachments != MU_NULL_PTR) {
-			free(color_attachments);
-		}
-		if (color_references != MU_NULL_PTR) {
-			free(color_references);
-		}
-		if (result != MU_NULL_PTR) {
-			*result = MU_FAILURE;
-		}
-		return framebuffer;
-	}
-	if (total_attachments != MU_NULL_PTR) {
-		mu_free(total_attachments);
-	}
-	if (color_attachments != MU_NULL_PTR) {
-		free(color_attachments);
-	}
-	if (color_references != MU_NULL_PTR) {
-		free(color_references);
-	}
-
-	// create framebuffers
-
-	framebuffer.framebuffer_count = image_view_count;
-	if (framebuffer.framebuffer_count != 0) {
-		framebuffer.framebuffers = mu_malloc(sizeof(VkFramebuffer) * framebuffer.framebuffer_count);
-	} else {
-		framebuffer.framebuffers = MU_NULL_PTR;
-	}
-
-	for (size_m i = 0; i < framebuffer.framebuffer_count; i++) {
-		VkFramebufferCreateInfo framebuffer_create_info = {0};
-		framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebuffer_create_info.renderPass = framebuffer.render_pass;
-		framebuffer_create_info.attachmentCount = 1;
-		framebuffer_create_info.pAttachments = &image_views[i];
-		framebuffer_create_info.width = extent.width;
-		framebuffer_create_info.height = extent.height;
-		framebuffer_create_info.layers = 1;
-
-		if (vkCreateFramebuffer(setup.device, &framebuffer_create_info, MU_NULL_PTR, &framebuffer.framebuffers[i]) != VK_SUCCESS) {
-			for (int j = i-1; j > -1; j--) {
-				vkDestroyFramebuffer(setup.device, framebuffer.framebuffers[j], MU_NULL_PTR);
-			}
-			mu_free(framebuffer.framebuffers);
-			framebuffer.framebuffers = MU_NULL_PTR;
-			if (result != MU_NULL_PTR) {
-				*result = MU_FAILURE;
-			}
-			return framebuffer;
-		}
-	}
-
-	framebuffer.extent = extent;
-
-	return framebuffer;
-}
-
-void muga_vulkan_framebuffer_destroy(muga_vulkan_setup setup, muga_vulkan_framebuffer framebuffer) {
-	for (size_m i = 0; i < framebuffer.framebuffer_count; i++) {
-		vkDestroyFramebuffer(setup.device, framebuffer.framebuffers[i], MU_NULL_PTR);
-	}
-	vkDestroyRenderPass(setup.device, framebuffer.render_pass, MU_NULL_PTR);
-}
-
 /* RENDERER STRUCT LOGIC */
 // The renderer is basically just the command buffer / semaphore handler
 // Note that a lot of this logic (and a lot of the previous logic to be fair) is largely
@@ -36967,6 +36755,8 @@ struct muga_vulkan_renderer {
 	VkSemaphore image_available_semaphore;
 	VkSemaphore render_finished_semaphore;
 	VkFence in_flight_fence;
+	// this is going to be per-framebuffer later
+	float clear_color[4];
 };
 typedef struct muga_vulkan_renderer muga_vulkan_renderer;
 
@@ -37056,7 +36846,7 @@ void muga_vulkan_renderer_destroy(muga_vulkan_setup setup, muga_vulkan_renderer 
 // mu_window_swap_buffers. Might be wrong tho.
 // @TODO make this safer by adding recording/stopped state to renderer
 
-void muga_vulkan_renderer_begin_recording(muResult* result, muga_vulkan_swapchain swapchain, muga_vulkan_setup setup, muga_vulkan_renderer renderer, muga_vulkan_framebuffer framebuffer, size_m framebuffer_index) {
+void muga_vulkan_renderer_begin_recording(muResult* result, muga_vulkan_swapchain swapchain, muga_vulkan_setup setup, muga_vulkan_renderer renderer) {
 	// begin recording command buffer
 
 	vkResetCommandBuffer(renderer.command_buffer, 0);
@@ -37071,57 +36861,9 @@ void muga_vulkan_renderer_begin_recording(muResult* result, muga_vulkan_swapchai
 		}
 		return;
 	}
-	VkImageSubresourceRange subResourceRange = {};
-	subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	subResourceRange.baseMipLevel = 0;
-	subResourceRange.levelCount = 1;
-	subResourceRange.baseArrayLayer = 0;
-	subResourceRange.layerCount = 1;
-	VkImageMemoryBarrier presentToClearBarrier = {};
-	presentToClearBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	presentToClearBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	presentToClearBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	presentToClearBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	presentToClearBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	presentToClearBarrier.srcQueueFamilyIndex = setup.queue_family_indices.present;
-	presentToClearBarrier.dstQueueFamilyIndex = setup.queue_family_indices.present;
-	presentToClearBarrier.image = swapchain.images[swapchain.image_index];
-	presentToClearBarrier.subresourceRange = subResourceRange;
-	VkImageMemoryBarrier clearToPresentBarrier = {};
-	clearToPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	clearToPresentBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	clearToPresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	clearToPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	clearToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	clearToPresentBarrier.srcQueueFamilyIndex = setup.queue_family_indices.present;
-	clearToPresentBarrier.dstQueueFamilyIndex = setup.queue_family_indices.present;
-	clearToPresentBarrier.image = swapchain.images[swapchain.image_index];
-	clearToPresentBarrier.subresourceRange = subResourceRange;
-	VkClearColorValue clearColor = {
-		{ 0.2f, 0.3f, 0.3f, 1.0f } // R, G, B, A
-	};
-
-	vkCmdPipelineBarrier(renderer.command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, MU_NULL_PTR, 0, MU_NULL_PTR, 1, &presentToClearBarrier);
-	vkCmdClearColorImage(renderer.command_buffer, swapchain.images[swapchain.image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &subResourceRange);
-	vkCmdPipelineBarrier(renderer.command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, MU_NULL_PTR, 0, MU_NULL_PTR, 1, &clearToPresentBarrier);
-
-	// begin render pass
-
-	VkRenderPassBeginInfo render_pass_info = {0};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	render_pass_info.renderPass = framebuffer.render_pass;
-	render_pass_info.framebuffer = framebuffer.framebuffers[framebuffer_index];
-	render_pass_info.renderArea.offset.x = 0;
-	render_pass_info.renderArea.offset.y = 0;
-	render_pass_info.renderArea.extent = framebuffer.extent;
-	VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-	render_pass_info.clearValueCount = 1;
-	render_pass_info.pClearValues = &clear_color;
-	vkCmdBeginRenderPass(renderer.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void muga_vulkan_renderer_stop_recording(muResult* result, muga_vulkan_renderer renderer) {
-	vkCmdEndRenderPass(renderer.command_buffer);
 	if (vkEndCommandBuffer(renderer.command_buffer) != VK_SUCCESS) {
 		mu_print("[MUGA] Failed to end recording of Vulkan renderer; render functions may not function properly.\n");
 		if (result != MU_NULL_PTR) {
@@ -37131,7 +36873,7 @@ void muga_vulkan_renderer_stop_recording(muResult* result, muga_vulkan_renderer 
 	}
 }
 
-void muga_vulkan_renderer_begin_recording_default_framebuffer(muResult* result, muga_vulkan_setup setup, muga_vulkan_swapchain* swapchain, muga_vulkan_renderer* renderer, muga_vulkan_framebuffer default_framebuffer) {
+void muga_vulkan_renderer_begin_recording_default_framebuffer(muResult* result, muga_vulkan_setup setup, muga_vulkan_swapchain* swapchain, muga_vulkan_renderer* renderer) {
 	// wait for fences
 
 	// Not sure if this is OK on all compilers                          >
@@ -37146,7 +36888,7 @@ void muga_vulkan_renderer_begin_recording_default_framebuffer(muResult* result, 
 	// begin recording
 
 	muResult res = MU_SUCCESS;
-	muga_vulkan_renderer_begin_recording(&res, *swapchain, setup, *renderer, default_framebuffer, swapchain->image_index);
+	muga_vulkan_renderer_begin_recording(&res, *swapchain, setup, *renderer);
 	if (res != MU_SUCCESS) {
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
@@ -37209,7 +36951,6 @@ struct muga_vulkan_context {
 	muWindow win;
 	muga_vulkan_setup setup;
 	muga_vulkan_swapchain swapchain;
-	muga_vulkan_framebuffer default_framebuffer;
 	muga_vulkan_renderer renderer;
 };
 typedef struct muga_vulkan_context muga_vulkan_context;
@@ -37293,28 +37034,8 @@ void muga_vulkan_create_context(muResult* result, muWindow win, const char* name
 		return;
 	}
 
-	VkFormat color_attachment_format = muga_global_vulkan_contexts[id].swapchain.image_format;
-	VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
-	muga_global_vulkan_contexts[id].default_framebuffer = muga_vulkan_framebuffer_create(
-		&res, muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].swapchain.extent,
-		1, &color_attachment_format, &samples,
-		muga_global_vulkan_contexts[id].swapchain.image_count, muga_global_vulkan_contexts[id].swapchain.image_views,
-		MU_FALSE, MU_TRUE, MU_FALSE
-	);
-	if (res == MU_FAILURE) {
-		mu_print("[MUGA] Failed to create Vulkan context; failed to create default framebuffer.\n");
-		muga_vulkan_swapchain_destroy(muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].swapchain);
-		muga_vulkan_setup_destroy(muga_global_vulkan_contexts[id].setup);
-		muga_vulkan_deallocate_context(id);
-		if (result != MU_NULL_PTR) {
-			*result = MU_FAILURE;
-		}
-		return;
-	}
-
 	muga_global_vulkan_contexts[id].renderer = muga_vulkan_renderer_create(&res, muga_global_vulkan_contexts[id].setup);
 	if (res == MU_FAILURE) {
-		muga_vulkan_framebuffer_destroy(muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].default_framebuffer);
 		muga_vulkan_swapchain_destroy(muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].swapchain);
 		muga_vulkan_setup_destroy(muga_global_vulkan_contexts[id].setup);
 		muga_vulkan_deallocate_context(id);
@@ -37338,7 +37059,6 @@ void muga_vulkan_destroy_context(muResult* result, muWindow win) {
 	vkDeviceWaitIdle(muga_global_vulkan_contexts[id].setup.device);
 
 	muga_vulkan_renderer_destroy(muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].renderer);
-	muga_vulkan_framebuffer_destroy(muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].default_framebuffer);
 	muga_vulkan_swapchain_destroy(muga_global_vulkan_contexts[id].setup, muga_global_vulkan_contexts[id].swapchain);
 	muga_vulkan_setup_destroy(muga_global_vulkan_contexts[id].setup);
 
@@ -37396,7 +37116,7 @@ void muga_vulkan_window_update(muResult* result, muWindow win) {
 
 	muga_vulkan_renderer_begin_recording_default_framebuffer(
 		result, muga_global_vulkan_contexts[id].setup, &muga_global_vulkan_contexts[id].swapchain,
-		&muga_global_vulkan_contexts[id].renderer, muga_global_vulkan_contexts[id].default_framebuffer
+		&muga_global_vulkan_contexts[id].renderer
 	);
 }
 
@@ -37411,13 +37131,68 @@ void muga_vulkan_window_swap_buffers(muResult* result, muWindow win) {
 }
 
 void muga_vulkan_window_set_clear_color(muResult* result, muWindow win, float r, float g, float b, float a) {
-	
+	size_m id = muga_vulkan_get_context_id(win);
+
+	muga_global_vulkan_contexts[id].renderer.clear_color[0] = r;
+	muga_global_vulkan_contexts[id].renderer.clear_color[1] = g;
+	muga_global_vulkan_contexts[id].renderer.clear_color[2] = b;
+	muga_global_vulkan_contexts[id].renderer.clear_color[3] = a;
 }
 
 void muga_vulkan_window_clear_buffer(muResult* result, muWindow win, muGraphicsBuffer buffer) {
 	//return;
-	// might need to call viewport / scissor funcs
 	// @TODO check for invalid window IDs here and around
+	size_m id = muga_vulkan_get_context_id(win);
+
+	VkImageSubresourceRange subResourceRange = {};
+	subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subResourceRange.baseMipLevel = 0;
+	subResourceRange.levelCount = 1;
+	subResourceRange.baseArrayLayer = 0;
+	subResourceRange.layerCount = 1;
+	VkImageMemoryBarrier presentToClearBarrier = {};
+	presentToClearBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	presentToClearBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	presentToClearBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	presentToClearBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	presentToClearBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	presentToClearBarrier.srcQueueFamilyIndex = muga_global_vulkan_contexts[id].setup.queue_family_indices.present;
+	presentToClearBarrier.dstQueueFamilyIndex = muga_global_vulkan_contexts[id].setup.queue_family_indices.present;
+	presentToClearBarrier.image = muga_global_vulkan_contexts[id].swapchain.images[muga_global_vulkan_contexts[id].swapchain.image_index];
+	presentToClearBarrier.subresourceRange = subResourceRange;
+	VkImageMemoryBarrier clearToPresentBarrier = {};
+	clearToPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	clearToPresentBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	clearToPresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	clearToPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	clearToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	clearToPresentBarrier.srcQueueFamilyIndex = muga_global_vulkan_contexts[id].setup.queue_family_indices.present;
+	clearToPresentBarrier.dstQueueFamilyIndex = muga_global_vulkan_contexts[id].setup.queue_family_indices.present;
+	clearToPresentBarrier.image = muga_global_vulkan_contexts[id].swapchain.images[muga_global_vulkan_contexts[id].swapchain.image_index];
+	clearToPresentBarrier.subresourceRange = subResourceRange;
+	VkClearColorValue clearColor = {
+		{ 
+			muga_global_vulkan_contexts[id].renderer.clear_color[0],
+			muga_global_vulkan_contexts[id].renderer.clear_color[1],
+			muga_global_vulkan_contexts[id].renderer.clear_color[2],
+			muga_global_vulkan_contexts[id].renderer.clear_color[3]
+		}
+	};
+
+	vkCmdPipelineBarrier(
+		muga_global_vulkan_contexts[id].renderer.command_buffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 0, MU_NULL_PTR, 0, MU_NULL_PTR, 1, &presentToClearBarrier);
+	vkCmdClearColorImage(
+		muga_global_vulkan_contexts[id].renderer.command_buffer, 
+		muga_global_vulkan_contexts[id].swapchain.images[muga_global_vulkan_contexts[id].swapchain.image_index],
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &subResourceRange
+	);
+	vkCmdPipelineBarrier(
+		muga_global_vulkan_contexts[id].renderer.command_buffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		0, 0, MU_NULL_PTR, 0, MU_NULL_PTR, 1, &clearToPresentBarrier
+	);
 }
 
 // API-level functions
