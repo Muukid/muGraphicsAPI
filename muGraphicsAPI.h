@@ -25965,9 +25965,20 @@ enum _muGraphicsBuffer {
 typedef enum _muGraphicsBuffer _muGraphicsBuffer;
 #define muGraphicsBuffer size_m
 
+/* defines */
+
+#define muShaderModule size_m
+#define MU_NO_SHADER_MODULE MU_NO_WINDOW
+
+#define muVertexBuffer size_m
+#define MU_NO_VERTEX_BUFFER MU_NO_WINDOW
+
+#define muPipeline size_m
+#define MU_NO_PIPELINE MU_NO_WINDOW
+
 /* functions */
 
-// basic window funcs
+// window funcs
 
 MUDEF muWindow (*muga_imp_window_create)(muResult* result, const char* name, unsigned int width, unsigned int height);
 MUDEF muWindow mu_window_create(muResult* result, const char* name, unsigned int width, unsigned int height);
@@ -25981,7 +25992,37 @@ MUDEF void mu_window_update(muResult* result, muWindow win);
 MUDEF void (*muga_imp_window_swap_buffers)(muResult* result, muWindow win);
 MUDEF void mu_window_swap_buffers(muResult* result, muWindow win);
 
-// basic window draw funcs
+// shader module funcs
+
+MUDEF muShaderModule (*muga_imp_shader_module_create)(muResult* result, const char* vertex_shader, const char* fragment_shader, const char* geometry_shader, const char* tessellation_shader);
+MUDEF muShaderModule mu_shader_module_create(muResult* result, const char* vertex_shader, const char* fragment_shader, const char* geometry_shader, const char* tessellation_shader);
+
+MUDEF void (*muga_imp_shader_module_destroy)(muResult* result, muShaderModule module);
+MUDEF void mu_shader_module_destroy(muResult* result, muShaderModule module);
+
+// vertex buffer funcs
+
+MUDEF muVertexBuffer (*muga_imp_vertex_buffer_create)(muResult* result, muShaderModule module);
+MUDEF muVertexBuffer mu_vertex_buffer_create(muResult* result, muShaderModule module);
+
+MUDEF void (*muga_imp_vertex_buffer_destroy)(muResult* result, muVertexBuffer buffer);
+MUDEF void mu_vertex_buffer_destroy(muResult* result, muVertexBuffer buffer);
+
+MUDEF void (*muga_imp_vertex_buffer_bind)(muResult* result, muWindow win, muVertexBuffer buffer);
+MUDEF void mu_vertex_buffer_bind(muResult* result, muWindow win, muVertexBuffer buffer);
+
+// pipeline funcs
+
+MUDEF muPipeline (*muga_imp_pipeline_create)(muResult* result, muWindow win, muShaderModule shader);
+MUDEF muPipeline mu_pipeline_create(muResult* result, muWindow win, muShaderModule shader);
+
+MUDEF void (*muga_imp_pipeline_destroy)(muResult* result, muWindow win, muPipeline pipeline);
+MUDEF void mu_pipeline_destroy(muResult* result, muWindow win, muPipeline pipeline);
+
+MUDEF void (*muga_imp_pipeline_bind)(muResult* result, muWindow win, muPipeline pipeline);
+MUDEF void mu_pipeline_bind(muResult* result, muWindow win, muPipeline pipeline);
+
+// window clear funcs
 
 // @MENTION on default this is (0, 0, 0, 0)
 MUDEF void (*muga_imp_window_set_clear_color)(muResult* result, muWindow win, float r, float g, float b, float a);
@@ -25989,6 +26030,11 @@ MUDEF void mu_window_set_clear_color(muResult* result, muWindow win, float r, fl
 
 MUDEF void (*muga_imp_window_clear_buffer)(muResult* result, muWindow win, muGraphicsBuffer buffer);
 MUDEF void mu_window_clear_buffer(muResult* result, muWindow win, muGraphicsBuffer buffer);
+
+// window draw funcs
+
+MUDEF void (*muga_imp_window_draw)(muResult* result, muWindow win, size_m vertex_count, size_m first_vertex_index);
+MUDEF void mu_window_draw(muResult* result, muWindow win, size_m vertex_count, size_m first_vertex_index);
 
 // opengl functions
 
@@ -32198,7 +32244,7 @@ extern "C" { // }
 muWindow (*muga_imp_window_create)(muResult* result, const char* name, unsigned int width, unsigned int height) = MU_NULL_PTR;
 MUDEF muWindow mu_window_create(muResult* result, const char* name, unsigned int width, unsigned int height) {
 	if (muga_imp_window_create == MU_NULL_PTR) {
-		mu_print("[MUGA] Failed to execute 'mu_window_create'; no API has given a definition for this function.\n");
+		mu_print("[MUGA] Failed to execute 'mu_window_create'; no API has given an implementation for this function.\n");
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
 		}
@@ -32210,7 +32256,7 @@ MUDEF muWindow mu_window_create(muResult* result, const char* name, unsigned int
 void (*muga_imp_window_destroy)(muResult* result, muWindow win) = MU_NULL_PTR;
 MUDEF void mu_window_destroy(muResult* result, muWindow win) {
 	if (muga_imp_window_destroy == MU_NULL_PTR) {
-		mu_print("[MUGA] Failed to execute 'mu_window_destroy'; no API has given a definition for this function.\n");
+		mu_print("[MUGA] Failed to execute 'mu_window_destroy'; no API has given an implementation for this function.\n");
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
 		}
@@ -32222,7 +32268,7 @@ MUDEF void mu_window_destroy(muResult* result, muWindow win) {
 void (*muga_imp_window_update)(muResult* result, muWindow win) = MU_NULL_PTR;
 MUDEF void mu_window_update(muResult* result, muWindow win) {
 	if (muga_imp_window_update == MU_NULL_PTR) {
-		mu_print("[MUGA] Failed to execute 'mu_window_update'; no API has given a definition for this function.\n");
+		mu_print("[MUGA] Failed to execute 'mu_window_update'; no API has given an implementation for this function.\n");
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
 		}
@@ -32234,7 +32280,7 @@ MUDEF void mu_window_update(muResult* result, muWindow win) {
 void (*muga_imp_window_swap_buffers)(muResult* result, muWindow win) = MU_NULL_PTR;
 MUDEF void mu_window_swap_buffers(muResult* result, muWindow win) {
 	if (muga_imp_window_swap_buffers == MU_NULL_PTR) {
-		mu_print("[MUGA] Failed to execute 'mu_window_swap_buffers'; no API has given a definition for this function.\n");
+		mu_print("[MUGA] Failed to execute 'mu_window_swap_buffers'; no API has given an implementation for this function.\n");
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
 		}
@@ -32243,10 +32289,106 @@ MUDEF void mu_window_swap_buffers(muResult* result, muWindow win) {
 	muga_imp_window_swap_buffers(result, win);
 }
 
+muShaderModule (*muga_imp_shader_module_create)(muResult* result, const char* vertex_shader, const char* fragment_shader, const char* geometry_shader, const char* tessellation_shader) = MU_NULL_PTR;
+MUDEF muShaderModule mu_shader_module_create(muResult* result, const char* vertex_shader, const char* fragment_shader, const char* geometry_shader, const char* tessellation_shader) {
+    if (muga_imp_shader_module_create == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_shader_module_create'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+    return muga_imp_shader_module_create(result, vertex_shader, fragment_shader, geometry_shader, tessellation_shader);
+}
+
+void (*muga_imp_shader_module_destroy)(muResult* result, muShaderModule module) = MU_NULL_PTR;
+MUDEF void mu_shader_module_destroy(muResult* result, muShaderModule module) {
+    if (muga_imp_shader_module_destroy == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_shader_module_destroy'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    muga_imp_shader_module_destroy(result, module);
+}
+
+muVertexBuffer (*muga_imp_vertex_buffer_create)(muResult* result, muShaderModule module) = MU_NULL_PTR;
+MUDEF muVertexBuffer mu_vertex_buffer_create(muResult* result, muShaderModule module) {
+    if (muga_imp_vertex_buffer_create == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_vertex_buffer_create'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_VERTEX_BUFFER;
+    }
+    return muga_imp_vertex_buffer_create(result, module);
+}
+
+void (*muga_imp_vertex_buffer_destroy)(muResult* result, muVertexBuffer buffer) = MU_NULL_PTR;
+MUDEF void mu_vertex_buffer_destroy(muResult* result, muVertexBuffer buffer) {
+    if (muga_imp_vertex_buffer_destroy == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_vertex_buffer_destroy'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    muga_imp_vertex_buffer_destroy(result, buffer);
+}
+
+void (*muga_imp_vertex_buffer_bind)(muResult* result, muWindow win, muVertexBuffer buffer) = MU_NULL_PTR;
+MUDEF void mu_vertex_buffer_bind(muResult* result, muWindow win, muVertexBuffer buffer) {
+    if (muga_imp_vertex_buffer_bind == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_vertex_buffer_bind'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    muga_imp_vertex_buffer_bind(result, win, buffer);
+}
+
+muPipeline (*muga_imp_pipeline_create)(muResult* result, muWindow win, muShaderModule shader) = MU_NULL_PTR;
+MUDEF muPipeline mu_pipeline_create(muResult* result, muWindow win, muShaderModule shader) {
+    if (muga_imp_pipeline_create == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_pipeline_create'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_PIPELINE;
+    }
+    return muga_imp_pipeline_create(result, win, shader);
+}
+
+void (*muga_imp_pipeline_destroy)(muResult* result, muWindow win, muPipeline pipeline) = MU_NULL_PTR;
+MUDEF void mu_pipeline_destroy(muResult* result, muWindow win, muPipeline pipeline) {
+    if (muga_imp_pipeline_destroy == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_pipeline_destroy'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    muga_imp_pipeline_destroy(result, win, pipeline);
+}
+
+void (*muga_imp_pipeline_bind)(muResult* result, muWindow win, muPipeline pipeline) = MU_NULL_PTR;
+MUDEF void mu_pipeline_bind(muResult* result, muWindow win, muPipeline pipeline) {
+    if (muga_imp_pipeline_bind == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_pipeline_bind'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    muga_imp_pipeline_bind(result, win, pipeline);
+}
+
 void (*muga_imp_window_set_clear_color)(muResult* result, muWindow win, float r, float g, float b, float a) = MU_NULL_PTR;
 MUDEF void mu_window_set_clear_color(muResult* result, muWindow win, float r, float g, float b, float a) {
 	if (muga_imp_window_set_clear_color == MU_NULL_PTR) {
-		mu_print("[MUGA] Failed to execute 'mu_window_set_clear_color'; no API has given a definition for this function.\n");
+		mu_print("[MUGA] Failed to execute 'mu_window_set_clear_color'; no API has given an implementation for this function.\n");
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
 		}
@@ -32258,13 +32400,25 @@ MUDEF void mu_window_set_clear_color(muResult* result, muWindow win, float r, fl
 void (*muga_imp_window_clear_buffer)(muResult* result, muWindow win, muGraphicsBuffer buffer) = MU_NULL_PTR;
 MUDEF void mu_window_clear_buffer(muResult* result, muWindow win, muGraphicsBuffer buffer) {
 	if (muga_imp_window_clear_buffer == MU_NULL_PTR) {
-		mu_print("[MUGA] Failed to execute 'mu_window_clear_buffer'; no API has given a definition for this function.\n");
+		mu_print("[MUGA] Failed to execute 'mu_window_clear_buffer'; no API has given an implementation for this function.\n");
 		if (result != MU_NULL_PTR) {
 			*result = MU_FAILURE;
 		}
 		return;
 	}
 	muga_imp_window_clear_buffer(result, win, buffer);
+}
+
+void (*muga_imp_window_draw)(muResult* result, muWindow win, size_m vertex_count, size_m first_vertex_index) = MU_NULL_PTR;
+MUDEF void mu_window_draw(muResult* result, muWindow win, size_m vertex_count, size_m first_vertex_index) {
+    if (muga_imp_window_draw == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to execute 'mu_window_draw'; no API has given an implementation for this function.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    muga_imp_window_draw(result, win, vertex_count, first_vertex_index);
 }
 
 /* OPENGL TIME! */
@@ -35883,6 +36037,105 @@ int muga_opengl_get_clear_bits(muGraphicsBuffer buffer) {
 	return clear;
 }
 
+/* WINDOW ALLOCATION HANDLING */
+
+struct muga_opengl_window {
+    muBool active;
+    muWindow win;
+    unsigned int default_vbo;
+    unsigned int default_vao;
+};
+typedef struct muga_opengl_window muga_opengl_window;
+
+muga_opengl_window* muga_opengl_global_windows = MU_NULL_PTR;
+size_m muga_opengl_global_window_count = 0;
+
+size_m muga_opengl_get_new_window_id() {
+    for (size_m i = 0; i < muga_opengl_global_window_count; i++) {
+        if (muga_opengl_global_windows[i].active != MU_TRUE) {
+            muga_opengl_global_windows[i].active = MU_TRUE;
+            return i;
+        }
+    }
+
+    muga_opengl_global_window_count++;
+    if (muga_opengl_global_window_count == 1) {
+        if (muga_opengl_global_windows != MU_NULL_PTR) {
+            mu_free(muga_opengl_global_windows);
+        }
+        muga_opengl_global_windows = mu_malloc(muga_opengl_global_window_count * sizeof(muga_opengl_window));
+        muga_opengl_global_windows[0].active = MU_TRUE;
+        return 0;
+    } else {
+        muga_opengl_global_windows = mu_realloc(muga_opengl_global_windows, muga_opengl_global_window_count * sizeof(muga_opengl_window));
+        return muga_opengl_global_window_count - 1;
+    }
+}
+
+void muga_opengl_deallocate_windows() {
+    if (muga_opengl_global_windows != MU_NULL_PTR) {
+        mu_free(muga_opengl_global_windows);
+        muga_opengl_global_windows = MU_NULL_PTR;
+    }
+    muga_opengl_global_window_count = 0;
+}
+
+size_m muga_opengl_find_window_id(muWindow win) {
+    if (win < muga_opengl_global_window_count && muga_opengl_global_windows[win].win == win) {
+        return win;
+    }
+    for (size_m i = 0; i < muga_opengl_global_window_count; i++) {
+        if (muga_opengl_global_windows[i].win == win) {
+            return i;
+        }
+    }
+    return MU_NO_WINDOW;
+}
+
+float muga_opengl_global_throwaway_float = 0.f;
+
+/* PIPELINE ALLOCATION HANDLING */
+
+struct muga_opengl_pipeline {
+    muBool active;
+    muWindow win;
+    unsigned int shader_program;
+};
+typedef struct muga_opengl_pipeline muga_opengl_pipeline;
+
+muga_opengl_pipeline* muga_opengl_global_pipelines = MU_NULL_PTR;
+size_m muga_opengl_global_pipeline_count = 0;
+
+size_m muga_opengl_get_new_pipeline_id() {
+    for (size_m i = 0; i < muga_opengl_global_pipeline_count; i++) {
+        if (muga_opengl_global_pipelines[i].active != MU_TRUE) {
+            muga_opengl_global_pipelines[i].active = MU_TRUE;
+            return i;
+        }
+    }
+
+    muga_opengl_global_pipeline_count++;
+    if (muga_opengl_global_pipeline_count == 1) {
+        if (muga_opengl_global_pipelines != MU_NULL_PTR) {
+            mu_free(muga_opengl_global_pipelines);
+        }
+        muga_opengl_global_pipelines = mu_malloc(muga_opengl_global_pipeline_count * sizeof(muga_opengl_pipeline));
+        muga_opengl_global_pipelines[0].active = MU_TRUE;
+        return 0;
+    } else {
+        muga_opengl_global_pipelines = mu_realloc(muga_opengl_global_pipelines, muga_opengl_global_pipeline_count * sizeof(muga_opengl_pipeline));
+        return muga_opengl_global_pipeline_count - 1;
+    }
+}
+
+void muga_opengl_deallocate_pipelines() {
+    if (muga_opengl_global_pipelines != MU_NULL_PTR) {
+        mu_free(muga_opengl_global_pipelines);
+        muga_opengl_global_pipelines = MU_NULL_PTR;
+    }
+    muga_opengl_global_pipeline_count = 0;
+}
+
 // functions
 
 muWindow muga_opengl_window_create(muResult* result, const char* name, unsigned int width, unsigned int height) {
@@ -35896,6 +36149,19 @@ muWindow muga_opengl_window_create(muResult* result, const char* name, unsigned 
 		return MU_NO_WINDOW;
 	}
 
+    size_m win_id = muga_opengl_get_new_window_id();
+    muga_opengl_global_windows[win_id].win = win;
+
+    glGenVertexArrays(1, &muga_opengl_global_windows[win_id].default_vao);
+    glGenBuffers(1, &muga_opengl_global_windows[win_id].default_vbo);
+    glBindVertexArray(muga_opengl_global_windows[win_id].default_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, muga_opengl_global_windows[win_id].default_vbo);
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float), &muga_opengl_global_throwaway_float, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
 	// mu_window_set_context(&res, win);
 
 	if (result != MU_NULL_PTR) {
@@ -35905,6 +36171,14 @@ muWindow muga_opengl_window_create(muResult* result, const char* name, unsigned 
 }
 
 void muga_opengl_window_destroy(muResult* result, muWindow win) {
+    size_m winid = muga_opengl_find_window_id(win);
+
+    if (winid != MU_NO_WINDOW) {
+        glDeleteVertexArrays(1, &muga_opengl_global_windows[winid].default_vao);
+        glDeleteBuffers(1, &muga_opengl_global_windows[winid].default_vbo);
+
+        muga_opengl_global_windows[winid].active = MU_FALSE;
+    }
 	muCOSA_window_destroy(result, win);
 }
 
@@ -35914,6 +36188,197 @@ void muga_opengl_window_update(muResult* result, muWindow win) {
 
 void muga_opengl_window_swap_buffers(muResult* result, muWindow win) {
 	muCOSA_window_swap_buffers(result, win);
+}
+
+muShaderModule muga_opengl_shader_module_create(muResult* result, const char* vertex_shader, const char* fragment_shader, const char* geometry_shader, const char* tessellation_shader) {
+    if (vertex_shader == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to create shader module; vertex shader needs to be specified, but is null pointer.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+    if (fragment_shader == MU_NULL_PTR) {
+        mu_print("[MUGA] Failed to create shader module; fragment shader needs to be specified, but is null pointer.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+
+    muResult res = MU_SUCCESS;
+
+    // vertex
+    muString str = mu_transpile_musl_code(&res, vertex_shader, fragment_shader, geometry_shader, tessellation_shader, MU_VERTEX_SHADER, MU_OPENGL_GLSL);
+    if (res != MU_SUCCESS) {
+        mu_print("[MUGA] Failed to create shader module; musl vertex shader compilation failed.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+    unsigned int gl_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(gl_vertex_shader, 1, (const GLchar* const*)&str.s, MU_NULL);
+    glCompileShader(gl_vertex_shader);
+    int success;
+    char info_log[512];
+    glGetShaderiv(gl_vertex_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(gl_vertex_shader, 512, MU_NULL, info_log);
+        mu_printf("[MUGA] Failed to create shader module; GLSL vertex shader code failed to compile. OpenGL error log: %s\n", info_log);
+        glDeleteShader(gl_vertex_shader);
+        str = mu_string_destroy(str);
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+    str = mu_string_destroy(str);
+
+    // fragment
+    str = mu_transpile_musl_code(&res, vertex_shader, fragment_shader, geometry_shader, tessellation_shader, MU_FRAGMENT_SHADER, MU_OPENGL_GLSL);
+    if (res != MU_SUCCESS) {
+        mu_print("[MUGA] Failed to create shader module; musl fragment shader compilation failed.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        glDeleteShader(gl_vertex_shader);
+        return MU_NO_SHADER_MODULE;
+    }
+    unsigned int gl_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(gl_fragment_shader, 1, (const GLchar* const*)&str.s, MU_NULL);
+    glCompileShader(gl_fragment_shader);
+    glGetShaderiv(gl_fragment_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(gl_fragment_shader, 512, MU_NULL, info_log);
+        mu_printf("[MUGA] Failed to create shader module; GLSL fragment shader code failed to compile. OpenGL error log: %s\n", info_log);
+        glDeleteShader(gl_vertex_shader);
+        glDeleteShader(gl_fragment_shader);
+        str = mu_string_destroy(str);
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+    str = mu_string_destroy(str);
+
+    // program
+    unsigned int shader_program = glCreateProgram();
+    glAttachShader(shader_program, gl_vertex_shader);
+    glAttachShader(shader_program, gl_fragment_shader);
+    glLinkProgram(shader_program);
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(shader_program, 512, MU_NULL, info_log);
+        mu_printf("[MUGA] Failed to create shader module; failed to link shaders into OpenGL shader program. OpenGL error log: %s\n", info_log);
+        glDeleteShader(gl_vertex_shader);
+        glDeleteShader(gl_fragment_shader);
+        glDeleteProgram(shader_program);
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return MU_NO_SHADER_MODULE;
+    }
+
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+
+    // cleanup
+    glDeleteShader(gl_vertex_shader);
+    glDeleteShader(gl_fragment_shader);
+    return (size_m)shader_program;
+}
+
+void muga_opengl_shader_module_destroy(muResult* result, muShaderModule module) {
+    if (module == MU_NO_SHADER_MODULE) {
+        mu_print("[MUGA] Failed to destory shader module; shader model value given is MU_NO_SHADER_MODULE. Its creation function may have failed.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+
+    glDeleteProgram((unsigned int)module);
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+}
+
+void muga_opengl_vertex_buffer_bind(muResult* result, muWindow win, muVertexBuffer buffer) {
+    if (buffer == MU_NO_VERTEX_BUFFER) {
+        size_m winid = muga_opengl_find_window_id(win);
+        // @TODO add error checking here
+        if (winid != MU_NO_WINDOW) {
+            glBindVertexArray(muga_opengl_global_windows[winid].default_vao);
+        }
+    }
+
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+}
+
+muPipeline muga_opengl_pipeline_create(muResult* result, muWindow win, muShaderModule shader) {
+    size_m pipeline = muga_opengl_get_new_pipeline_id();
+    muga_opengl_global_pipelines[pipeline].win = win;
+    muga_opengl_global_pipelines[pipeline].shader_program = shader;
+
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+    return pipeline;
+}
+
+void muga_opengl_pipeline_destroy(muResult* result, muWindow win, muPipeline pipeline) {
+    if (pipeline == MU_NO_PIPELINE) {
+        mu_print("[MUGA] Failed to destroy pipeline; pipeline value given is MU_NO_PIPELINE. Its creation function may have failed.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    if (pipeline >= muga_opengl_global_pipeline_count) {
+        mu_print("[MUGA] Failed to destroy pipeline; pipeline value given is invalid.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    if (muga_opengl_global_pipelines[pipeline].active == MU_FALSE) {
+        mu_print("[MUGA] Failed to destroy pipeline; pipeline value given is invalid or has already been destroyed.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+    muga_opengl_global_pipelines[pipeline].active = MU_FALSE;
+}
+
+void muga_opengl_pipeline_bind(muResult* result, muWindow win, muPipeline pipeline) {
+    if (pipeline >= muga_opengl_global_pipeline_count) {
+        mu_print("[MUGA] Failed to bind pipeline; pipeline value given is invalid.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+    if (muga_opengl_global_pipelines[pipeline].active == MU_FALSE) {
+        mu_print("[MUGA] Failed to bind pipeline; pipeline value given is invalid or has already been destroyed.\n");
+        if (result != MU_NULL_PTR) {
+            *result = MU_FAILURE;
+        }
+        return;
+    }
+
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+    glUseProgram(muga_opengl_global_pipelines[pipeline].shader_program);
 }
 
 void muga_opengl_window_set_clear_color(muResult* result, muWindow win, float r, float g, float b, float a) {
@@ -35928,6 +36393,9 @@ void muga_opengl_window_set_clear_color(muResult* result, muWindow win, float r,
 	}
 
 	glClearColor(r, g, b, a);
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
 }
 
 void muga_opengl_window_clear_buffer(muResult* result, muWindow win, muGraphicsBuffer buffer) {
@@ -35942,6 +36410,16 @@ void muga_opengl_window_clear_buffer(muResult* result, muWindow win, muGraphicsB
 	}
 
 	glClear(muga_opengl_get_clear_bits(buffer));
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+}
+
+void muga_opengl_window_draw(muResult* result, muWindow win, size_m vertex_count, size_m first_vertex_index) {
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
+    glDrawArrays(GL_TRIANGLES, first_vertex_index, vertex_count);
 }
 
 // API-level functions
@@ -35961,12 +36439,51 @@ MUDEF void muga_init_opengl(muResult* result) {
 	muga_imp_window_destroy = &muga_opengl_window_destroy;
 	muga_imp_window_update = &muga_opengl_window_update;
 	muga_imp_window_swap_buffers = &muga_opengl_window_swap_buffers;
+    muga_imp_shader_module_create = &muga_opengl_shader_module_create;
+    muga_imp_shader_module_destroy = &muga_opengl_shader_module_destroy;
+    muga_imp_vertex_buffer_bind = &muga_opengl_vertex_buffer_bind;
+    muga_imp_pipeline_create = &muga_opengl_pipeline_create;
+    muga_imp_pipeline_destroy = &muga_opengl_pipeline_destroy;
+    muga_imp_pipeline_bind = &muga_opengl_pipeline_bind;
 	muga_imp_window_set_clear_color = &muga_opengl_window_set_clear_color;
 	muga_imp_window_clear_buffer = &muga_opengl_window_clear_buffer;
+    muga_imp_window_draw = &muga_opengl_window_draw;
+
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
 }
 
 MUDEF void muga_term_opengl(muResult* result) {
 	muResult res = MU_SUCCESS;
+
+    muga_imp_window_create = MU_NULL_PTR;
+    muga_imp_window_destroy = MU_NULL_PTR;
+    muga_imp_window_update = MU_NULL_PTR;
+    muga_imp_window_swap_buffers = MU_NULL_PTR;
+    muga_imp_shader_module_create = MU_NULL_PTR;
+    muga_imp_shader_module_destroy = MU_NULL_PTR;
+    muga_imp_vertex_buffer_bind = MU_NULL_PTR;
+    muga_imp_pipeline_create = MU_NULL_PTR;
+    muga_imp_pipeline_destroy = MU_NULL_PTR;
+    muga_imp_pipeline_bind = MU_NULL_PTR;
+    muga_imp_window_set_clear_color = MU_NULL_PTR;
+    muga_imp_window_clear_buffer = MU_NULL_PTR;
+    muga_imp_window_draw = MU_NULL_PTR;
+
+    for (size_m i = 0; i < muga_opengl_global_pipeline_count; i++) {
+        if (muga_opengl_global_pipelines[i].active) {
+            muga_opengl_pipeline_destroy(result, muga_opengl_global_pipelines[i].win, i);
+        }
+    }
+    muga_opengl_deallocate_pipelines();
+
+    for (size_m i = 0; i < muga_opengl_global_window_count; i++) {
+        if (muga_opengl_global_windows[i].active) {
+            muga_opengl_window_destroy(result, muga_opengl_global_windows[i].win);
+        }
+    }
+    muga_opengl_deallocate_windows();
 
 	mu_COSA_term(&res);
 	if (res == MU_FAILURE) {
@@ -35976,12 +36493,9 @@ MUDEF void muga_term_opengl(muResult* result) {
 		return;
 	}
 
-	muga_imp_window_create = MU_NULL_PTR;
-	muga_imp_window_destroy = MU_NULL_PTR;
-	muga_imp_window_update = MU_NULL_PTR;
-	muga_imp_window_swap_buffers = MU_NULL_PTR;
-	muga_imp_window_set_clear_color = MU_NULL_PTR;
-	muga_imp_window_clear_buffer = MU_NULL_PTR;
+    if (result != MU_NULL_PTR) {
+        *result = MU_SUCCESS;
+    }
 }
 
 #endif /* MUGA_OPENGL */
